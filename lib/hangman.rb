@@ -1,3 +1,5 @@
+require "yaml"
+
 class Hangman
 
   def initialize
@@ -21,6 +23,20 @@ class Hangman
     arr
   end
 
+  def save_game
+    Dir.mkdir("saves") unless Dir.exist?("saves")
+
+    File.open("saves/save_file.txt", "w") { |f| f.write(YAML::dump(self)) }
+    puts "\n   Game state saved!"
+  end
+
+
+  def load(filename)
+    puts "Loading..."
+    puts File.read(filename).inspect
+    from_json(File.read(filename))
+  end
+
   def start
     puts "\n   Welcome to Hangman.\n"
     puts "   The word has #{@secret_letters.length.to_s} letters. Good luck!\n"
@@ -31,10 +47,12 @@ class Hangman
       puts "\n   #{@guessed_letters.join}\n"
 
       puts "\n   Does not contain: #{@wrong_letters.join(" ")}"
-      puts "   Guess a letter:"
+      puts "   Enter a letter, or 'save' to save:"
       guess = gets.chomp.downcase
 
-      if @secret_letters.any? { |letter| letter == guess  } then
+      if guess == "save" then
+        save_game
+      elsif @secret_letters.any? { |letter| letter == guess  }
         @secret_letters.each_with_index do |letter,index|
           @guessed_letters[index] = guess if letter == guess
         end
@@ -48,12 +66,9 @@ class Hangman
 
     end
 
-    if @out_of_guesses then
-      puts "\n   The word was #{@secret_letters.join}."
-    else
-      puts "\n   You got it! The word was #{@secret_letters.join}."
-    end
+    puts "\n   You got it!" unless @out_of_guesses
 
+    puts "\n   The word was #{@secret_letters.join}."
     puts "\n   Play again? (y/n)"
     answer = gets.chomp
     if answer == "y" then
@@ -67,5 +82,21 @@ class Hangman
 
 end
 
-game = Hangman.new
+def saved_game?
+  if File.file?("saves/save_file.txt") then
+    puts "\n   Load previous game state? (y/n)"
+    load_game = gets.chomp
+    if load_game == "y"
+      save_file = File.open("saves/save_file.txt","r")
+      game_state = YAML::load(save_file)
+    else
+      game_state = Hangman.new
+    end
+  else
+    game_state = Hangman.new
+  end
+  game_state
+end
+
+game = saved_game?
 game.start
